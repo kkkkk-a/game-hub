@@ -192,11 +192,9 @@
     </div>
 
     <!-- フッター -->
-    <footer>
-        <p>&copy; 2024 My Game Works. All rights reserved.</p>
-    </footer>
-
+<footer>&copy; <span id="year"></span> My Game Works. All rights reserved.</footer>
     <script>
+        document.getElementById('year').textContent = new Date().getFullYear();
         // ==========================================
         //  ポートフォリオ データ設定
         // ==========================================
