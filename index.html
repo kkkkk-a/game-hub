@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>お米山盛りGAME HUB</title>
+    <style>
+        /* --- サイト全体のスタイル (Dark & Neon Theme) --- */
+        :root {
+            --bg-color: #121212;
+            --card-bg: #1e1e1e;
+            --text-main: #e0e0e0;
+            --text-sub: #a0a0a0;
+            --accent-color: #00d2ff; /* ネオンブルー */
+        }
+
+        body {
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            padding: 0;
+            line-height: 1.6;
+        }
+
+        /* --- ヘッダー --- */
+        header {
+            text-align: center;
+            padding: 80px 20px;
+            background: radial-gradient(circle at center, #2a2a2a 0%, var(--bg-color) 100%);
+            border-bottom: 1px solid #333;
+        }
+
+        h1 {
+            font-size: 3rem;
+            margin: 0 0 10px 0;
+            letter-spacing: 4px;
+            text-shadow: 0 0 10px rgba(0, 210, 255, 0.5);
+        }
+
+        .bio {
+            color: var(--text-sub);
+            font-size: 1.1rem;
+            margin-bottom: 30px;
+        }
+
+        /* --- メインコンテンツ (グリッドレイアウト) --- */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 60px 20px;
+        }
+
+        .section-title {
+            text-align: center;
+            font-size: 1.8rem;
+            margin-bottom: 40px;
+            color: var(--text-sub);
+            border-bottom: 2px solid #333;
+            display: inline-block;
+            padding-bottom: 10px;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 40px;
+        }
+
+        /* --- 作品カード --- */
+        .card {
+            background-color: var(--card-bg);
+            border-radius: 16px;
+            overflow: hidden;
+            text-decoration: none;
+            color: inherit;
+            display: flex;
+            flex-direction: column;
+            border: 1px solid #333;
+            transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s;
+            position: relative;
+        }
+
+        .card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.5);
+            border-color: var(--accent-color);
+        }
+
+        .card-img-container {
+            width: 100%;
+            height: 200px;
+            background-color: #000;
+            overflow: hidden;
+            border-bottom: 1px solid #333;
+            position: relative;
+        }
+
+        .card-img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.5s ease;
+        }
+
+        .card:hover .card-img {
+            transform: scale(1.1);
+        }
+
+        .no-image {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100%;
+            background: linear-gradient(45deg, #222, #333);
+            color: #666;
+            font-weight: bold;
+            font-size: 1.2rem;
+        }
+
+        .card-content {
+            padding: 25px;
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .card-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 15px;
+        }
+
+        .tag {
+            font-size: 0.7rem;
+            padding: 4px 10px;
+            border-radius: 20px;
+            background-color: rgba(255, 255, 255, 0.05);
+            color: var(--accent-color);
+            border: 1px solid rgba(0, 210, 255, 0.3);
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+
+        .card-title {
+            font-size: 1.4rem;
+            margin: 0 0 10px 0;
+            font-weight: 700;
+            color: #fff;
+        }
+
+        .card-desc {
+            font-size: 0.95rem;
+            color: var(--text-sub);
+            margin: 0;
+            line-height: 1.6;
+        }
+
+        /* --- フッター --- */
+        footer {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+            font-size: 0.9rem;
+            border-top: 1px solid #333;
+            margin-top: 60px;
+        }
+        
+        /* スマホ対応レスポンシブ */
+        @media (max-width: 600px) {
+            h1 { font-size: 2rem; }
+            .grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ヘッダーエリア -->
+    <header>
+        <h1>お米山盛り GAME HUB</h1>
+        <p class="bio">HTML5 & JavaScriptで作られた作品たち。</p>
+    </header>
+
+    <!-- メインコンテンツ -->
+    <div class="container">
+        <div style="text-align: center;">
+            <h2 class="section-title">PROJECTS</h2>
+        </div>
+        
+        <div id="project-grid" class="grid"></div>
+    </div>
+
+    <!-- フッター -->
+    <footer>
+        <p>&copy; 2024 My Game Works. All rights reserved.</p>
+    </footer>
+
+    <script>
+        // ==========================================
+        //  ポートフォリオ データ設定
+        // ==========================================
+        const projects = [
+            {
+                title: "ノベルクリエイト (Engine)",
+                desc: "ブラウザだけで動作する、インストール不要のノベルゲーム制作エンジン。HTMLファイル1つで完結する超軽量設計。WebPによるアセット管理対応。",
+                link: "https://kkkkk-a.github.io/novel-create/",
+                tags: ["Tool", "Engine"]
+            },
+            {
+                title: "スプライトキャンバス",
+                desc: "ドット絵を描いて、アニメーション設定までWeb上で完結できるツール。JSON出力に対応し、ノベルクリエイト、セルランナーと連携可能。",
+                link: "https://kkkkk-a.github.io/sprite-canvas/",
+                tags: ["Tool", "PixelArt", "Animation"]
+            },
+            {
+                title: "セルランナー",
+                desc: "自作ドットキャラクターで走り抜ける、ブラウザ完結型ラン＆アクションゲーム。キャラの形状や色が性能に影響し、描いたドット絵がそのままゲームプレイに反映される。",
+                link: "https://kkkkk-a.github.io/cell-runner/",
+                tags: ["Game"]
+            },
+            {
+                title: "オーディオシンセ",
+                desc: "ブラウザのみで動作する多機能オーディオシンセサイザー。オシレーターによる波形生成、ADSRエンベロープ、フィルター、LFOを組み合わせた本格的な音作りが可能。ドラムシーケンサーとディレイ・リバーブ等のエフェクトを内蔵し、作成したサウンドは音声ファイルとして書き出し対応。インストール不要で、即座に演奏・制作が行える。",
+                link: "https://kkkkk-a.github.io/audio-synth/",
+                tags: ["Tool"]
+            },
+            {
+                title: "メディアコンバータ",
+                desc: "ドラッグ＆ドロップでファイルを選ぶだけの軽量メディアコンバーター。画像（JPEG/PNG/WebP/AVIF など）や音声・動画ファイル（MP3/WAV/AAC/OGG/WebM など）を任意の形式に変換し、ビットレートやサイズ変更、ZIP 一括ダウンロードなどの出力オプションも搭載。",
+                link: "https://kkkkk-a.github.io/media-converter/",
+                tags: ["Tool"]
+            },
+            {
+                title: "プレイスカルプト",
+                desc: "ブラウザ実行の 3D スカルプト＆モデリングツール。立方体・球・円柱などの基本メッシュを生成し、編集モードでトランスフォームや細分化、頂点/面操作、スカルプトブラシで造形が可能。カラーや素材（発光/透明/金属など）も設定でき、インストール不要で立体表現に挑戦できる。",
+                link: "https://kkkkk-a.github.io/play-sculpture/",
+                tags: ["Tool","3D"]
+            },
+            {
+    title: "カルク＆クラッシュ",
+    desc: "計算とともに “クラッシュ演出” が起きる仕掛け付きで、電卓操作にちょっとした遊び心を加えたゲーム。",
+    link: "https://kkkkk-a.github.io/calc-crash/",
+    tags: ["Tool", "Utility", "Fun"]
+},
+{
+    title: "スマッシュブレイカー",
+    desc: "ブロック崩しとアクション要素を融合したブラウザゲーム。バットでボールを弾き、ステージ内のブロックや敵を壊しながら進むシンプル操作の爽快ゲーム体験。",
+    link: "https://kkkkk-a.github.io/smash-breaker/",
+    tags: ["Game", "Action", "Arcade"]
+},
+{
+    title: "ラインヴァニッシュ",
+    desc: "マウスやタッチで線を消しながら進む、シンプルで直感的なブラウザアクション体験。プレイヤーの操作によって線が消え、風景が変化していくインタラクティブ作品。",
+    link: "https://kkkkk-a.github.io/line-vanish/",
+    tags: ["Game", "Interactive", "Action"]
+},
+{
+    title: "分子運動シミュレーション",
+    desc: "インタラクティブなパーティクル動作テスト。複数の粒子が物理的挙動で動き回り、マウス操作やパラメータ変更によって視覚的な動きが変化するインタラクティブビジュアライゼーション。",
+    link: "https://kkkkk-a.github.io/particle-motion-test/",
+    tags: ["Visual", "Interactive", "Particle"]
+},
+        ];
+
+        // ==========================================
+        //  ポートフォリオ 生成ロジック
+        // ==========================================
+        const grid = document.getElementById('project-grid');
+
+        projects.forEach(proj => {
+            const card = document.createElement('a');
+            card.href = proj.link;
+            card.className = 'card';
+            if (proj.link !== '#') card.target = "_blank";
+            else card.style.cursor = "default";
+
+
+const imgHtml = `
+    <img src="${proj.title}.webp"
+         alt="${proj.title}"
+         class="card-img"
+         onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+`;
+            const noImgHtml = `<div class="no-image" style="${proj.image ? 'display:none' : ''}">No Image</div>`;
+            const tagsHtml = proj.tags.map(t => `<span class="tag">${t}</span>`).join('');
+
+            card.innerHTML = `
+                <div class="card-img-container">${imgHtml}${noImgHtml}</div>
+                <div class="card-content">
+                    <div class="card-tags">${tagsHtml}</div>
+                    <h3 class="card-title">${proj.title}</h3>
+                    <p class="card-desc">${proj.desc}</p>
+                </div>
+            `;
+            grid.appendChild(card);
+        });
+
+    </script>
+</body>
+</html>
