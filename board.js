@@ -1,7 +1,7 @@
 import { generate_fingerprint_hash, solve_pow, roll_dice, check_moderation_status } from './board-wasm/pkg/board_wasm.js';
 
-const SUPABASE_URL = 'https://YOUR_PROJECT_ID.supabase.co';
-const SUPABASE_ANON_KEY = 'YOUR_ANON_KEY';
+const SUPABASE_URL = 'https://pxwpzergezbdrltolkry.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_1y7K1Z0c1PuzVpkcFgi25w_fvYxyCEN';
 
 const isSupabaseConfigured = SUPABASE_URL.indexOf('YOUR_PROJECT_ID') === -1;
 let supabase = null;
