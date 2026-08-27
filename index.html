@@ -2,289 +2,104 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>kkkkk-a GAME HUB</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>kkkkk-a GAME HUB & COMMUNITY</title>
+    <link rel="stylesheet" href="style.css">
     <link rel="icon" type="image/png" href="icon.png">
-    <style>
-        /* --- サイト全体のスタイル (Dark & Neon Theme) --- */
-        :root {
-            --bg-color: #121212;
-            --card-bg: #1e1e1e;
-            --text-main: #e0e0e0;
-            --text-sub: #a0a0a0;
-            --accent-color: #00d2ff; /* ネオンブルー */
-        }
-
-        body {
-            font-family: 'Helvetica Neue', Arial, sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text-main);
-            margin: 0;
-            padding: 0;
-            line-height: 1.6;
-        }
-
-        /* --- ヘッダー --- */
-        header {
-            text-align: center;
-            padding: 80px 20px;
-            background: radial-gradient(circle at center, #2a2a2a 0%, var(--bg-color) 100%);
-            border-bottom: 1px solid #333;
-        }
-
-        h1 {
-            font-size: 3rem;
-            margin: 0 0 10px 0;
-            letter-spacing: 4px;
-            text-shadow: 0 0 10px rgba(0, 210, 255, 0.5);
-        }
-
-        .bio {
-            color: var(--text-sub);
-            font-size: 1.1rem;
-            margin-bottom: 30px;
-        }
-
-        /* --- メインコンテンツ (グリッドレイアウト) --- */
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 60px 20px;
-        }
-
-        .section-title {
-            text-align: center;
-            font-size: 1.8rem;
-            margin-bottom: 40px;
-            color: var(--text-sub);
-            border-bottom: 2px solid #333;
-            display: inline-block;
-            padding-bottom: 10px;
-        }
-
-        .grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-            gap: 40px;
-        }
-
-        /* --- 作品カード --- */
-        .card {
-            background-color: var(--card-bg);
-            border-radius: 16px;
-            overflow: hidden;
-            text-decoration: none;
-            color: inherit;
-            display: flex;
-            flex-direction: column;
-            border: 1px solid #333;
-            transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s;
-            position: relative;
-        }
-
-        .card:hover {
-            transform: translateY(-8px);
-            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.5);
-            border-color: var(--accent-color);
-        }
-
-        .card-img-container {
-            width: 100%;
-            height: 200px;
-            background-color: #000;
-            overflow: hidden;
-            border-bottom: 1px solid #333;
-            position: relative;
-        }
-
-        .card-img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            transition: transform 0.5s ease;
-        }
-
-        .card:hover .card-img {
-            transform: scale(1.1);
-        }
-
-        .no-image {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100%;
-            background: linear-gradient(45deg, #222, #333);
-            color: #666;
-            font-weight: bold;
-            font-size: 1.2rem;
-        }
-
-        .card-content {
-            padding: 25px;
-            flex-grow: 1;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .card-tags {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-            margin-bottom: 15px;
-        }
-
-        .tag {
-            font-size: 0.7rem;
-            padding: 4px 10px;
-            border-radius: 20px;
-            background-color: rgba(255, 255, 255, 0.05);
-            color: var(--accent-color);
-            border: 1px solid rgba(0, 210, 255, 0.3);
-            font-weight: 600;
-            letter-spacing: 0.5px;
-        }
-
-        .card-title {
-            font-size: 1.4rem;
-            margin: 0 0 10px 0;
-            font-weight: 700;
-            color: #fff;
-        }
-
-        .card-desc {
-            font-size: 0.95rem;
-            color: var(--text-sub);
-            margin: 0;
-            line-height: 1.6;
-        }
-
-        /* --- フッター --- */
-        footer {
-            text-align: center;
-            padding: 40px;
-            color: #666;
-            font-size: 0.9rem;
-            border-top: 1px solid #333;
-            margin-top: 60px;
-        }
-        
-        /* スマホ対応レスポンシブ */
-        @media (max-width: 600px) {
-            h1 { font-size: 2rem; }
-            .grid { grid-template-columns: 1fr; }
-        }
-    </style>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
-
-    <!-- ヘッダーエリア -->
     <header>
         <h1>kkkkk-a GAME HUB</h1>
-        <p class="bio">HTML5 & JavaScriptで作られた作品たち。</p>
+        <p class="bio">HTML5 & JavaScript Game Works and Decentralized Board.</p>
+        
+        <!-- ナビゲーションタブ -->
+        <div class="nav-tabs">
+            <button class="tab-btn active" data-target="tab-projects">[ PROJECTS ]</button>
+            <button class="tab-btn" data-target="tab-board">[ COMMUNITY BOARD ]</button>
+            <button class="tab-btn" data-target="tab-create">[ NEW THREAD ]</button>
+        </div>
+
+        <!-- 1. ゲーム一覧用 検索コントロール -->
+        <div id="controls-projects" class="controls">
+            <input type="text" id="project-search-input" class="search-box" placeholder="作品名・説明文を検索..." aria-label="作品検索">
+            <div id="project-filter-container" class="filter-tags"></div>
+        </div>
+
+        <!-- 2. 掲示板（スレッド一覧・検索）用コントロール -->
+        <div id="controls-board" class="controls" style="display:none;">
+            <div style="display:flex; flex-direction:column; gap:6px; width:100%; max-width:450px;">
+                <div style="display:flex; gap:6px; align-items:center;">
+                    <input type="text" id="board-title-search" class="search-box" placeholder="スレタイ検索..." aria-label="スレタイ検索" style="margin:0;">
+                    <input type="file" id="search-image-file" accept="image/*" style="display:none;">
+                    <button type="button" onclick="document.getElementById('search-image-file').click()" class="btn-sub-action" style="white-space:nowrap; height:38px;" title="画像を投げてスレッド検索">[img検索]</button>
+                </div>
+                <div style="display:flex; gap:6px;">
+                    <input type="text" id="board-body-search" class="search-box" placeholder="本文検索..." aria-label="本文検索" style="margin:0; flex:1;">
+                    <input type="text" id="board-reply-search" class="search-box" placeholder="レス検索..." aria-label="レス検索" style="margin:0; flex:1;">
+                </div>
+                <div style="display:flex; gap:6px;">
+                    <input type="text" id="board-tag-search" class="search-box" placeholder="タグ名で絞り込み (例: Tool)..." aria-label="タグ検索" style="margin:0; flex:1;">
+                </div>
+            </div>
+            <div id="search-img-preview-box" style="font-size:0.75rem; color:var(--accent); display:none;">
+                [画像検索中: <span id="search-img-name"></span>] <span style="cursor:pointer; text-decoration:underline;" id="clear-search-img">解除</span>
+            </div>
+            <div class="filter-options">
+                <label class="filter-chip"><input type="checkbox" id="filter-has-image"> [IMG] 画像あり</label>
+                <label class="filter-chip"><input type="checkbox" id="filter-has-reply"> [RES] レスあり</label>
+            </div>
+            <div id="board-tags" class="filter-tags"></div>
+        </div>
+
+        <!-- 3. スレッド作成タブ用コントロール -->
+        <div id="controls-create" class="controls" style="display:none;">
+            <p class="bio" style="margin:0;">新しいスレッドを作成してコミュニティに共有しよう</p>
+        </div>
     </header>
 
-    <!-- メインコンテンツ -->
     <div class="container">
-        <div style="text-align: center;">
-            <h2 class="section-title">PROJECTS</h2>
+        <!-- プロジェクト一覧タブ -->
+        <div id="tab-projects" class="tab-content">
+            <div id="project-grid" class="grid"></div>
         </div>
-        
-        <div id="project-grid" class="grid"></div>
+
+        <!-- 掲示板タブ（スレッド一覧） -->
+        <div id="tab-board" class="tab-content" style="display:none;">
+            <div class="board-info-bar">
+                <span>CLIENT ID: <code id="display-fp" style="color:var(--accent);">INITIALIZING...</code></span>
+                <span class="badge-status">AUTONOMOUS MODERATION (BAD >= 3 COLLAPSED)</span>
+            </div>
+            
+            <div style="width:100%;">
+                <div id="thread-list" class="thread-list"></div>
+            </div>
+        </div>
+
+        <!-- スレッド作成タブ -->
+        <div id="tab-create" class="tab-content" style="display:none; max-width:600px; margin:0 auto;">
+            <div class="board-card">
+                <h3 style="margin:0 0 12px; font-size:1.15rem; color:#fff;">NEW THREAD CREATE</h3>
+                <form id="thread-form">
+                    <input type="text" id="thread-title" class="input-text" placeholder="スレッドタイトル" required maxlength="40">
+                    <input type="text" id="thread-author" class="input-text" placeholder="名前 (省略可)" maxlength="20">
+                    <textarea id="thread-body" class="textarea" placeholder="本文 (#タグ, dice1d100, URL自動リンク)" required maxlength="400" style="min-height:140px;"></textarea>
+                    
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; font-size:0.8rem;">
+                        <input type="file" id="thread-file" accept="image/*" style="display:none;">
+                        <button type="button" onclick="document.getElementById('thread-file').click()" class="btn-sub-action">[+] 画像添付</button>
+                    </div>
+                    <button type="submit" id="btn-submit" class="btn-main">スレッドを立てる</button>
+                </form>
+            </div>
+        </div>
     </div>
 
-    <!-- フッター -->
-<footer>&copy; <span id="year"></span>kkkkk-a Game Works. All rights reserved.</footer>
-    <script>
-        document.getElementById('year').textContent = new Date().getFullYear();
-        // ==========================================
-        //  ポートフォリオ データ設定
-        // ==========================================
-        const projects = [
-            {
-                title: "ノベルクリエイト",
-                desc: "ブラウザだけで動作する、インストール不要のノベルゲーム制作エンジン。HTMLファイル1つで完結する超軽量設計。WebPによるアセット管理対応。",
-                link: "https://kkkkk-a.github.io/novel-create/",
-                tags: ["Tool", "Engine"]
-            },
-            {
-                title: "スプライトキャンバス",
-                desc: "ドット絵を描いて、アニメーション設定までWeb上で完結できるツール。JSON出力に対応し、ノベルクリエイト、セルランナーと連携可能。",
-                link: "https://kkkkk-a.github.io/sprite-canvas/",
-                tags: ["Tool", "PixelArt", "Animation"]
-            },
-            {
-                title: "セルランナー",
-                desc: "自作ドットキャラクターで走り抜ける、ブラウザ完結型ラン＆アクションゲーム。キャラの形状や色が性能に影響し、描いたドット絵がそのままゲームプレイに反映される。",
-                link: "https://kkkkk-a.github.io/cell-runner/",
-                tags: ["Game"]
-            },
-            {
-                title: "オーディオシンセ",
-                desc: "ブラウザのみで動作する多機能オーディオシンセサイザー。オシレーターによる波形生成、ADSRエンベロープ、フィルター、LFOを組み合わせた本格的な音作りが可能。ドラムシーケンサーとディレイ・リバーブ等のエフェクトを内蔵し、作成したサウンドは音声ファイルとして書き出し対応。インストール不要で、即座に演奏・制作が行える。",
-                link: "https://kkkkk-a.github.io/audio-synth/",
-                tags: ["Tool"]
-            },
-            {
-                title: "メディアコンバータ",
-                desc: "ドラッグ＆ドロップでファイルを選ぶだけの軽量メディアコンバーター。画像（JPEG/PNG/WebP/AVIF など）や音声・動画ファイル（MP3/WAV/AAC/OGG/WebM など）を任意の形式に変換し、ビットレートやサイズ変更、ZIP 一括ダウンロードなどの出力オプションも搭載。",
-                link: "https://kkkkk-a.github.io/media-converter/",
-                tags: ["Tool"]
-            },
-            {
-                title: "プレイスカルプト",
-                desc: "ブラウザ実行の 3D スカルプト＆モデリングツール。立方体・球・円柱などの基本メッシュを生成し、編集モードでトランスフォームや細分化、頂点/面操作、スカルプトブラシで造形が可能。カラーや素材（発光/透明/金属など）も設定でき、インストール不要で立体表現に挑戦できる。",
-                link: "https://kkkkk-a.github.io/play-sculpture/",
-                tags: ["Tool","3D"]
-            },
-            
-{
-    title: "分子運動シミュレーション",
-    desc: "インタラクティブなパーティクル動作テスト。複数の粒子が物理的挙動で動き回り、マウス操作やパラメータ変更によって視覚的な動きが変化するインタラクティブビジュアライゼーション。",
-    link: "https://kkkkk-a.github.io/particle-motion-test/",
-    tags: ["Visual", "Interactive", "Particle"]
-},
-            {
-    title: "ミニゲームズ",
-    desc: "複数のミニゲームが遊べます。",
-    link: "https://kkkkk-a.github.io/mini-games/",
-    tags: ["Visual", "Interactive", "Particle"]
-},
+    <footer>
+        &copy; <span id="year"></span> kkkkk-a Game Works. All rights reserved.
+    </footer>
 
-        ];
-
-        // ==========================================
-        //  ポートフォリオ 生成ロジック
-        // ==========================================
-        const grid = document.getElementById('project-grid');
-
-        projects.forEach(proj => {
-            const card = document.createElement('a');
-            card.href = proj.link;
-            card.className = 'card';
-            if (proj.link !== '#') card.target = "_blank";
-            else card.style.cursor = "default";
-
-
-const imgHtml = `
-    <img src="${proj.title}.webp"
-         alt="${proj.title}"
-         class="card-img"
-         onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
-`;
-            const noImgHtml = `<div class="no-image" style="${proj.image ? 'display:none' : ''}">No Image</div>`;
-            const tagsHtml = proj.tags.map(t => `<span class="tag">${t}</span>`).join('');
-
-            card.innerHTML = `
-                <div class="card-img-container">${imgHtml}${noImgHtml}</div>
-                <div class="card-content">
-                    <div class="card-tags">${tagsHtml}</div>
-                    <h3 class="card-title">${proj.title}</h3>
-                    <p class="card-desc">${proj.desc}</p>
-                </div>
-            `;
-            grid.appendChild(card);
-        });
-
-    </script>
+    <script>document.getElementById('year').textContent = new Date().getFullYear();</script>
+    <script type="module" src="app.js"></script>
 </body>
 </html>

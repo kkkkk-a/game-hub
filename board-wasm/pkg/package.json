@@ -1,0 +1,15 @@
+{
+  "name": "board-wasm",
+  "type": "module",
+  "version": "0.1.0",
+  "files": [
+    "board_wasm_bg.wasm",
+    "board_wasm.js",
+    "board_wasm.d.ts"
+  ],
+  "main": "board_wasm.js",
+  "types": "board_wasm.d.ts",
+  "sideEffects": [
+    "./snippets/*"
+  ]
+}
