@@ -63,11 +63,6 @@ function setupNavigation() {
             const target = btn.dataset.target;
             btn.classList.add('active');
             document.getElementById(target).style.display = 'block';
-
-            // ヘッダー検索コントロールの切り替え
-            document.getElementById('controls-projects').style.display = target === 'tab-projects' ? 'flex' : 'none';
-            document.getElementById('controls-board').style.display = target === 'tab-board' ? 'flex' : 'none';
-            document.getElementById('controls-create').style.display = target === 'tab-create' ? 'flex' : 'none';
         };
     });
 }
@@ -107,7 +102,8 @@ function setupBoardSearchEvents() {
         const file = e.target.files[0];
         if (!file) return;
         
-        const base64 = await compressImage(file, 100, 0.5);
+        // 投稿時と同じデフォルト設定 (400, 0.6) で圧縮して完全一致させる
+        const base64 = await compressImage(file, 400, 0.6);
         window._currentSearchImage = base64;
 
         document.getElementById('search-img-name').textContent = file.name;
@@ -154,28 +150,48 @@ function renderProjects() {
 
 function setupBoardForm() {
     const form = document.getElementById('thread-form');
+    const fileInput = document.getElementById('thread-file');
+    const fileInfo = document.getElementById('thread-file-info');
+    const fileName = document.getElementById('thread-file-name');
+    const fileClear = document.getElementById('thread-file-clear');
+
+    fileInput.onchange = () => {
+        if (fileInput.files && fileInput.files[0]) {
+            fileName.textContent = fileInput.files[0].name;
+            fileInfo.style.display = 'block';
+        }
+    };
+
+    fileClear.onclick = () => {
+        fileInput.value = '';
+        fileInfo.style.display = 'none';
+    };
+
     form.onsubmit = async (e) => {
         e.preventDefault();
         const btn = document.getElementById('btn-submit');
         const title = document.getElementById('thread-title').value.trim();
         const author = document.getElementById('thread-author').value.trim();
         const body = document.getElementById('thread-body').value.trim();
-        const file = document.getElementById('thread-file').files[0];
+        const file = fileInput.files[0];
 
         if (!title || !body) return;
         btn.disabled = true;
         btn.textContent = '計算中...';
 
-        await createThread(title, author, body, file, fpId);
+        const success = await createThread(title, author, body, file, fpId);
 
-        form.reset();
         btn.disabled = false;
         btn.textContent = 'スレッドを立てる';
 
-        // 投稿完了後に自動で掲示板一覧タブへ切り替え
-        const boardTabBtn = document.querySelector('.tab-btn[data-target="tab-board"]');
-        if (boardTabBtn) {
-            boardTabBtn.click();
+        if (success) {
+            form.reset();
+            fileInfo.style.display = 'none';
+            // 投稿成功時のみ自動で掲示板一覧タブへ切り替え
+            const boardTabBtn = document.querySelector('.tab-btn[data-target="tab-board"]');
+            if (boardTabBtn) {
+                boardTabBtn.click();
+            }
         }
     };
 }

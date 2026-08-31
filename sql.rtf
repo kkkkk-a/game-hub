@@ -83,7 +83,13 @@ with check (\
         select 1 from public.banned_users where banned_users.fp = threads.fp\
     )\
 );\
-create policy "\uc0\u35504 \u12391 \u12418 \u36820 \u20449 \u12420 \u35413 \u20385 \u25968 \u12398 \u26356 \u26032 \u12364 \u21487 \u33021 " on public.threads for update using (true);\
+create policy "\uc0\u35504 \u12391 \u12418 \u36820 \u20449 \u12420 \u35413 \u20385 \u25968 \u12398 \u26356 \u26032 \u12364 \u21487 \u33021 " on public.threads for update \
+using (true) \
+with check (\
+    not exists (\
+        select 1 from public.banned_users where banned_users.fp = threads.fp\
+    )\
+);\
 \
 -- 4-3. votes \uc0\u12398 \u12475 \u12461 \u12517 \u12522 \u12486 \u12451 \
 alter table public.votes enable row level security;\

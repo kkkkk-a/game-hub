@@ -19,53 +19,43 @@
             <button class="tab-btn" data-target="tab-board">[ COMMUNITY BOARD ]</button>
             <button class="tab-btn" data-target="tab-create">[ NEW THREAD ]</button>
         </div>
-
-        <!-- 1. ゲーム一覧用 検索コントロール -->
-        <div id="controls-projects" class="controls">
-            <input type="text" id="project-search-input" class="search-box" placeholder="作品名・説明文を検索..." aria-label="作品検索">
-            <div id="project-filter-container" class="filter-tags"></div>
-        </div>
-
-        <!-- 2. 掲示板（スレッド一覧・検索）用コントロール -->
-        <div id="controls-board" class="controls" style="display:none;">
-            <div style="display:flex; flex-direction:column; gap:6px; width:100%; max-width:450px;">
-                <div style="display:flex; gap:6px; align-items:center;">
-                    <input type="text" id="board-title-search" class="search-box" placeholder="スレタイ検索..." aria-label="スレタイ検索" style="margin:0;">
-                    <input type="file" id="search-image-file" accept="image/*" style="display:none;">
-                    <button type="button" onclick="document.getElementById('search-image-file').click()" class="btn-sub-action" style="white-space:nowrap; height:38px;" title="画像を投げてスレッド検索">[img検索]</button>
-                </div>
-                <div style="display:flex; gap:6px;">
-                    <input type="text" id="board-body-search" class="search-box" placeholder="本文検索..." aria-label="本文検索" style="margin:0; flex:1;">
-                    <input type="text" id="board-reply-search" class="search-box" placeholder="レス検索..." aria-label="レス検索" style="margin:0; flex:1;">
-                </div>
-                <div style="display:flex; gap:6px;">
-                    <input type="text" id="board-tag-search" class="search-box" placeholder="タグ名で絞り込み (例: Tool)..." aria-label="タグ検索" style="margin:0; flex:1;">
-                </div>
-            </div>
-            <div id="search-img-preview-box" style="font-size:0.75rem; color:var(--accent); display:none;">
-                [画像検索中: <span id="search-img-name"></span>] <span style="cursor:pointer; text-decoration:underline;" id="clear-search-img">解除</span>
-            </div>
-            <div class="filter-options">
-                <label class="filter-chip"><input type="checkbox" id="filter-has-image"> [IMG] 画像あり</label>
-                <label class="filter-chip"><input type="checkbox" id="filter-has-reply"> [RES] レスあり</label>
-            </div>
-            <div id="board-tags" class="filter-tags"></div>
-        </div>
-
-        <!-- 3. スレッド作成タブ用コントロール -->
-        <div id="controls-create" class="controls" style="display:none;">
-            <p class="bio" style="margin:0;">新しいスレッドを作成してコミュニティに共有しよう</p>
-        </div>
     </header>
 
     <div class="container">
         <!-- プロジェクト一覧タブ -->
         <div id="tab-projects" class="tab-content">
+            <div class="tab-control-panel">
+                <input type="text" id="project-search-input" class="search-box" placeholder="作品名・説明文を検索..." aria-label="作品検索">
+                <div id="project-filter-container" class="filter-tags"></div>
+            </div>
             <div id="project-grid" class="grid"></div>
         </div>
 
         <!-- 掲示板タブ（スレッド一覧） -->
         <div id="tab-board" class="tab-content" style="display:none;">
+            <div class="tab-control-panel">
+                <div class="board-search-grid">
+                    <div style="display:flex; gap:6px;">
+                        <input type="text" id="board-title-search" class="search-box" placeholder="スレタイ検索..." aria-label="スレタイ検索" style="margin:0; flex:1;">
+                        <input type="file" id="search-image-file" accept="image/*" style="display:none;">
+                        <button type="button" onclick="const f=document.getElementById('search-image-file'); f.value=''; f.click();" class="btn-sub-action" style="white-space:nowrap; height:38px;" title="画像を投げてスレッド検索">[img検索]</button>
+                    </div>
+                    <div style="display:flex; gap:6px;">
+                        <input type="text" id="board-body-search" class="search-box" placeholder="本文検索..." aria-label="本文検索" style="margin:0; flex:1;">
+                        <input type="text" id="board-reply-search" class="search-box" placeholder="レス検索..." aria-label="レス検索" style="margin:0; flex:1;">
+                    </div>
+                    <input type="text" id="board-tag-search" class="search-box" placeholder="タグ名で絞り込み (例: Tool)..." aria-label="タグ検索" style="margin:0; width:100%;">
+                </div>
+                <div id="search-img-preview-box" style="font-size:0.75rem; color:var(--accent); display:none; text-align:center;">
+                    [画像検索中: <span id="search-img-name"></span>] <span style="cursor:pointer; text-decoration:underline;" id="clear-search-img">解除</span>
+                </div>
+                <div class="filter-options">
+                    <label class="filter-chip"><input type="checkbox" id="filter-has-image"> [IMG] 画像あり</label>
+                    <label class="filter-chip"><input type="checkbox" id="filter-has-reply"> [RES] レスあり</label>
+                </div>
+                <div id="board-tags" class="filter-tags"></div>
+            </div>
+
             <div class="board-info-bar">
                 <span>CLIENT ID: <code id="display-fp" style="color:var(--accent);">INITIALIZING...</code></span>
                 <span class="badge-status">AUTONOMOUS MODERATION (BAD >= 3 COLLAPSED)</span>
@@ -87,7 +77,11 @@
                     
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; font-size:0.8rem;">
                         <input type="file" id="thread-file" accept="image/*" style="display:none;">
-                        <button type="button" onclick="document.getElementById('thread-file').click()" class="btn-sub-action">[+] 画像添付</button>
+                        <button type="button" onclick="const f=document.getElementById('thread-file'); f.value=''; f.click();" class="btn-sub-action">[+] 画像添付</button>
+                        <div id="thread-file-info" style="display:none; color:var(--accent); font-size:0.75rem;">
+                            <span id="thread-file-name"></span>
+                            <span id="thread-file-clear" style="cursor:pointer; text-decoration:underline; margin-left:6px; color:var(--danger);">[削除]</span>
+                        </div>
                     </div>
                     <button type="submit" id="btn-submit" class="btn-main">スレッドを立てる</button>
                 </form>

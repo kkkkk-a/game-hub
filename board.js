@@ -9,16 +9,16 @@ if (isSupabaseConfigured && window.supabase) {
     try {
         supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     } catch(e) {
-        console.warn("Supabase初期化失敗: ローカルモードで動作します");
+        console.error("Supabase初期化失敗: サーバーに接続できません", e);
     }
 }
 
-const LOCAL_STORAGE_KEY = 'hub_threads_local_fallback';
 let cachedThreads = [];
 let currentTag = 'All';
 
 export function linkify(text) {
-    const urlPattern = /(https?:\/\/[^\s<]+)/g;
+    // &quot; や &gt; などのHTMLエンティティや末尾の不要な句読点を巻き込まない正規表現
+    const urlPattern = /(https?:\/\/[^\s<>"'&]+)/g;
     return text.replace(urlPattern, url => `<a href="${url}" target="_blank" rel="noopener noreferrer">${url}</a>`);
 }
 
@@ -53,11 +53,16 @@ export async function compressImage(file, max = 400, quality = 0.6) {
     });
 }
 
+let realtimeChannel = null;
+
 export async function initBoard(fpId) {
     await fetchAndRender(fpId);
 
     if (supabase) {
-        supabase
+        if (realtimeChannel) {
+            supabase.removeChannel(realtimeChannel);
+        }
+        realtimeChannel = supabase
             .channel('public:threads')
             .on('postgres_changes', { event: '*', schema: 'public', table: 'threads' }, () => {
                 fetchAndRender(fpId);
@@ -74,9 +79,14 @@ export async function fetchAndRender(fpId) {
             .order('created_at', { ascending: false })
             .limit(60);
 
-        if (!error && data) cachedThreads = data;
+        if (!error && data) {
+            cachedThreads = data;
+        } else if (error) {
+            console.error("スレッド取得エラー:", error);
+        }
     } else {
-        cachedThreads = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEY) || '[]');
+        console.error("Supabaseが初期化されていません。");
+        cachedThreads = [];
     }
 
     renderBoardUI(fpId);
@@ -129,7 +139,7 @@ export function renderBoardUI(fpId) {
         // 画像逆引き検索判定
         let matchSearchImg = true;
         if (window._currentSearchImage) {
-            matchSearchImg = !!t.img; 
+            matchSearchImg = Boolean(t.img && t.img === window._currentSearchImage);
         }
 
         // 1. スレタイ個別検索
@@ -171,11 +181,13 @@ export function renderBoardUI(fpId) {
         }
     }
 
+    listEl.className = isFocusMode ? 'thread-single-view' : 'thread-grid';
+
     listEl.innerHTML = `
         ${isFocusMode ? `
-            <div style="margin-bottom: 12px;">
-                <button class="btn-sub-action" onclick="toggleThread(null)" style="padding: 6px 14px; font-size: 0.85rem;">
-                    ← スレッド一覧に戻る
+            <div style="margin-bottom: 14px;">
+                <button class="btn-sub-action" onclick="toggleThread(null)" style="padding: 7px 16px; font-size: 0.85rem; display:inline-flex; align-items:center; gap:6px;">
+                    <span>←</span> スレッド一覧に戻る
                 </button>
             </div>
         ` : ''}
@@ -185,76 +197,114 @@ export function renderBoardUI(fpId) {
             const dateStr = new Date(t.created_at || t.t).toLocaleDateString('ja-JP', { month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit' });
             const replyCount = (t.replies || []).length;
 
+            // 一覧表示時（非フォーカス時）のタイル型グリッドカード
+            if (!isFocusMode) {
+                return `
+                <div class="thread-item-summary ${isCollapsed ? 'collapsed' : ''}" id="t-${t.id}" onclick="toggleThread('${t.id}')">
+                    ${t.img ? `
+                        <div class="thread-card-thumb-banner">
+                            <img src="${t.img}" class="thread-card-thumb-img" alt="thumbnail">
+                        </div>
+                    ` : ''}
+                    <div class="thread-summary-content">
+                        <div class="thread-summary-header">
+                            <span class="thread-summary-author">
+                                ${escapeHtml(t.author || '名無し')}
+                                <small style="color:var(--sub); opacity:0.7;">#${t.fp}</small>
+                            </span>
+                            <span class="thread-summary-date">${dateStr}</span>
+                        </div>
+                        <div class="thread-summary-title">
+                            ${escapeHtml(t.title)}
+                        </div>
+                        <div class="thread-summary-snippet">
+                            ${escapeHtml(t.body.replace(/(\r\n|\n|\r)/gm, " "))}
+                        </div>
+                        <div class="thread-summary-footer">
+                            <div class="thread-summary-tags">
+                                ${(t.tags || []).map(tg => `<span class="tag-badge">#${tg}</span>`).join('')}
+                            </div>
+                            <div class="thread-summary-stats" onclick="event.stopPropagation();">
+                                <span class="reply-count-badge ${replyCount > 0 ? 'has-replies' : ''}">💬 ${replyCount}</span>
+                                <button class="btn-vote btn-vote-mini ${myVote === 'up' ? 'active-up' : ''}" onclick="vote('${t.id}', 'up')" ${myVote ? 'disabled' : ''}>👍 ${t.up_count || 0}</button>
+                                <button class="btn-vote btn-vote-mini ${myVote === 'down' ? 'active-down' : ''}" onclick="vote('${t.id}', 'down')" ${myVote ? 'disabled' : ''}>👎 ${t.down_count || 0}</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                `;
+            }
+
+            // スレッド詳細（フォーカス時）
             return `
-                <div class="thread-item ${isCollapsed ? 'collapsed' : ''}" id="t-${t.id}" style="${isFocusMode ? 'border-color:var(--accent);' : ''}">
+                <div class="thread-item thread-item-focused ${isCollapsed ? 'collapsed' : ''}" id="t-${t.id}">
                     <div class="thread-header">
                         <span>
-                            ${escapeHtml(t.author || '名無し')} 
-                            <small style="opacity:0.6">#${t.fp}</small>
+                            <strong style="color:var(--text);">${escapeHtml(t.author || '名無し')}</strong>
+                            <small style="opacity:0.7; margin-left:4px;">#${t.fp}</small>
                             <button class="btn-vote btn-vote-mini" onclick="voteUser('${t.fp}', 'up')" title="ユーザーを高評価">👍</button>
                             <button class="btn-vote btn-vote-mini" onclick="voteUser('${t.fp}', 'down')" title="ユーザーを低評価">👎</button>
                         </span>
                         <span>${dateStr}</span>
                     </div>
-                    <div class="thread-title" style="${!isFocusMode ? 'cursor:pointer; color:var(--accent);' : ''}" ${!isFocusMode ? `onclick="toggleThread('${t.id}')"` : ''}>
-                        ${escapeHtml(t.title)} ${!isFocusMode ? `<span style="font-size:0.75rem; color:var(--sub); font-weight:normal;">(レス: ${replyCount})</span>` : ''}
+                    <div class="thread-title" style="font-size:1.3rem; margin:8px 0 12px; color:#fff;">
+                        ${escapeHtml(t.title)}
                     </div>
                     
                     ${isCollapsed ? `<div class="collapse-notice" onclick="document.getElementById('body-${t.id}').style.display='block'">[!] 低評価多数のため折りたたまれています (展開)</div>` : ''}
 
                     <div id="body-${t.id}" style="${isCollapsed ? 'display:none;' : ''}">
-                        <div class="post-content">${linkify(escapeHtml(t.body))}</div>
-                        ${t.img ? `<img src="${t.img}" class="post-img" onclick="openBase64Image('${t.img}')">` : ''}
+                        <div class="post-content" style="font-size:0.95rem;">${linkify(escapeHtml(t.body))}</div>
+                        ${t.img ? `<img src="${t.img}" class="post-img" onclick="openBase64Image('${t.img}')" style="max-width:320px; max-height:320px; border-radius:8px;">` : ''}
                     </div>
 
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-top:14px; padding-top:10px; border-top:1px solid var(--border);">
                         <div>${(t.tags || []).map(tg => `<span class="tag-badge">#${tg}</span>`).join('')}</div>
                         <div style="display:flex; gap:6px; align-items:center;">
-                            ${!isFocusMode ? `<button class="btn-sub-action" onclick="toggleThread('${t.id}')">レスを見る [+]</button>` : ''}
-                            <button class="btn-vote ${myVote === 'up' ? 'active-up' : ''}" onclick="vote('${t.id}', 'up')" ${myVote ? 'disabled' : ''}>[+] ${t.up_count || 0}</button>
-                            <button class="btn-vote ${myVote === 'down' ? 'active-down' : ''}" onclick="vote('${t.id}', 'down')" ${myVote ? 'disabled' : ''}>[-] ${t.down_count || 0}</button>
+                            <button class="btn-vote ${myVote === 'up' ? 'active-up' : ''}" onclick="vote('${t.id}', 'up')" ${myVote ? 'disabled' : ''}>👍 ${t.up_count || 0}</button>
+                            <button class="btn-vote ${myVote === 'down' ? 'active-down' : ''}" onclick="vote('${t.id}', 'down')" ${myVote ? 'disabled' : ''}>👎 ${t.down_count || 0}</button>
                         </div>
                     </div>
 
-                    <!-- フォーカスモード時（レスを見るを開いている時）のみレス一覧と返信フォームを表示 -->
-                    ${isFocusMode ? `
-                        <div class="replies-box" style="margin-top:12px;">
-                            <div style="font-size:0.78rem; font-weight:bold; color:var(--sub); margin-bottom:4px;">レスポンス一覧 (${replyCount}件)</div>
-                            ${(t.replies || []).length === 0 ? `<div style="font-size:0.8rem; color:var(--sub); padding:4px;">まだレスはありません。最初の返信を投稿しよう！</div>` : ''}
-                            ${(t.replies || []).map(r => {
-                                const myReplyVote = myVotes[r.id];
-                                const isReplyCollapsed = check_moderation_status(r.up_count || 0, r.down_count || 0, 3);
-                                return `
-                                <div class="reply-item ${isReplyCollapsed ? 'collapsed' : ''}" id="r-${r.id}">
-                                    <div style="display:flex; justify-content:space-between; font-size:0.72rem; color:var(--sub);">
-                                        <span>
-                                            <span class="${r.is_op ? 'author-op' : ''}">${escapeHtml(r.a)} ${r.is_op ? '(★主)' : ''}</span>
-                                            <small style="opacity:0.7;">#${r.fp}</small>
-                                            <button class="btn-vote btn-vote-mini" onclick="voteUser('${r.fp}', 'up')" title="ユーザーを高評価">👍</button>
-                                            <button class="btn-vote btn-vote-mini" onclick="voteUser('${r.fp}', 'down')" title="ユーザーを低評価">👎</button>
-                                        </span>
-                                        <span>${new Date(r.t).toLocaleTimeString('ja-JP', {hour:'2-digit', minute:'2-digit'})}</span>
-                                    </div>
-                                    ${isReplyCollapsed ? `<div class="collapse-notice" onclick="document.getElementById('r-body-${r.id}').style.display='block'">[!] 低評価多数のレス (展開)</div>` : ''}
-                                    <div id="r-body-${r.id}" style="${isReplyCollapsed ? 'display:none;' : ''}">
-                                        <div class="post-content">${linkify(escapeHtml(r.body))}</div>
-                                    </div>
-                                    <div style="display:flex; justify-content:flex-end; gap:4px; margin-top:4px;">
-                                        <button class="btn-vote btn-vote-mini ${myReplyVote === 'up' ? 'active-up' : ''}" onclick="voteReply('${t.id}', '${r.id}', 'up')" ${myReplyVote ? 'disabled' : ''}>[+] ${r.up_count || 0}</button>
-                                        <button class="btn-vote btn-vote-mini ${myReplyVote === 'down' ? 'active-down' : ''}" onclick="voteReply('${t.id}', '${r.id}', 'down')" ${myReplyVote ? 'disabled' : ''}>[-] ${r.down_count || 0}</button>
-                                    </div>
-                                </div>
-                                `;
-                            }).join('')}
-                            <form onsubmit="postReply(event, '${t.id}')" style="display:flex; flex-direction:column; gap:6px; margin-top:8px;">
-                                <input type="text" placeholder="名前 (空欄で名無し自演)" class="input-text reply-author-input" style="margin:0; font-size:0.8rem; padding:4px 8px;" maxlength="20">
-                                <div style="display:flex; gap:6px;">
-                                    <input type="text" placeholder="返信を入力..." class="input-text reply-body-input" style="margin:0; flex:1;" required maxlength="200">
-                                    <button type="submit" class="btn-main" style="width:auto; padding:0 12px; font-size:0.75rem;">返信</button>
-                                </div>
-                            </form>
+                    <!-- レス一覧と返信フォーム -->
+                    <div class="replies-box" style="margin-top:18px;">
+                        <div style="font-size:0.85rem; font-weight:bold; color:var(--text); margin-bottom:8px; display:flex; align-items:center; gap:6px;">
+                            <span>💬 レスポンス (${replyCount}件)</span>
                         </div>
-                    ` : ''}
+                        ${(t.replies || []).length === 0 ? `<div style="font-size:0.82rem; color:var(--sub); padding:10px; text-align:center; background:#14171e; border-radius:6px;">まだレスはありません。最初の返信を投稿しよう！</div>` : ''}
+                        ${(t.replies || []).map(r => {
+                            const myReplyVote = myVotes[r.id];
+                            const isReplyCollapsed = check_moderation_status(r.up_count || 0, r.down_count || 0, 3);
+                            return `
+                            <div class="reply-item ${isReplyCollapsed ? 'collapsed' : ''}" id="r-${r.id}">
+                                <div style="display:flex; justify-content:space-between; font-size:0.75rem; color:var(--sub); margin-bottom:4px;">
+                                    <span>
+                                        <span class="${r.is_op ? 'author-op' : ''}">${escapeHtml(r.a)} ${r.is_op ? '(★主)' : ''}</span>
+                                        <small style="opacity:0.7; margin-left:4px;">#${r.fp}</small>
+                                        <button class="btn-vote btn-vote-mini" onclick="voteUser('${r.fp}', 'up')" title="ユーザーを高評価">👍</button>
+                                        <button class="btn-vote btn-vote-mini" onclick="voteUser('${r.fp}', 'down')" title="ユーザーを低評価">👎</button>
+                                    </span>
+                                    <span>${new Date(r.t).toLocaleTimeString('ja-JP', {hour:'2-digit', minute:'2-digit'})}</span>
+                                </div>
+                                ${isReplyCollapsed ? `<div class="collapse-notice" onclick="document.getElementById('r-body-${r.id}').style.display='block'">[!] 低評価多数のレス (展開)</div>` : ''}
+                                <div id="r-body-${r.id}" style="${isReplyCollapsed ? 'display:none;' : ''}">
+                                    <div class="post-content">${linkify(escapeHtml(r.body))}</div>
+                                </div>
+                                <div style="display:flex; justify-content:flex-end; gap:6px; margin-top:6px;">
+                                    <button class="btn-vote btn-vote-mini ${myReplyVote === 'up' ? 'active-up' : ''}" onclick="voteReply('${t.id}', '${r.id}', 'up')" ${myReplyVote ? 'disabled' : ''}>👍 ${r.up_count || 0}</button>
+                                    <button class="btn-vote btn-vote-mini ${myReplyVote === 'down' ? 'active-down' : ''}" onclick="voteReply('${t.id}', '${r.id}', 'down')" ${myReplyVote ? 'disabled' : ''}>👎 ${r.down_count || 0}</button>
+                                </div>
+                            </div>
+                            `;
+                        }).join('')}
+                        <form onsubmit="postReply(event, '${t.id}')" style="display:flex; flex-direction:column; gap:8px; margin-top:12px; background:#14171e; padding:12px; border-radius:6px; border:1px solid var(--border);">
+                            <input type="text" placeholder="名前 (空欄で名無し)" class="input-text reply-author-input" style="margin:0; font-size:0.85rem;" maxlength="20">
+                            <div style="display:flex; gap:8px;">
+                                <input type="text" placeholder="返信を入力..." class="input-text reply-body-input" style="margin:0; flex:1; font-size:0.85rem;" required maxlength="200">
+                                <button type="submit" class="btn-main" style="width:auto; padding:0 18px; font-size:0.82rem; white-space:nowrap;">返信</button>
+                            </div>
+                        </form>
+                    </div>
                 </div>
             `;
         }).join('')}
@@ -263,39 +313,42 @@ export function renderBoardUI(fpId) {
 
 // 新規スレッド作成
 export async function createThread(title, author, body, file, fpId) {
-    // 1. BANチェック
-    if (supabase) {
-        const { data: ban } = await supabase.from('banned_users').select('reason').eq('fp', fpId).single();
-        if (ban) {
-            alert(`この端末は利用停止（BAN）されています。\n理由: ${ban.reason || '規約違反'}`);
-            return;
-        }
+    if (!supabase) {
+        alert("サーバーに接続できません。スレッドを作成できませんでした。");
+        return false;
+    }
 
-        // 2. 直近の投稿クールダウンチェック（例: 3分以内の連投を禁止）
-        const threeMinutesAgo = new Date(Date.now() - 3 * 60 * 1000).toISOString();
-        const { data: recentPosts } = await supabase
-            .from('threads')
-            .select('created_at')
-            .eq('fp', fpId)
-            .gte('created_at', threeMinutesAgo);
+    // 1. BANチェック (存在しない場合にエラーにならないよう maybeSingle を使用)
+    const { data: ban } = await supabase.from('banned_users').select('reason').eq('fp', fpId).maybeSingle();
+    if (ban) {
+        alert(`この端末は利用停止（BAN）されています。\n理由: ${ban.reason || '規約違反'}`);
+        return false;
+    }
 
-        if (recentPosts && recentPosts.length > 0) {
-            alert("投稿間隔が短すぎます。スレッド作成は3分間に1回までです。");
-            return;
-        }
+    // 2. 直近の投稿クールダウンチェック（3分以内の連投を禁止）
+    const threeMinutesAgo = new Date(Date.now() - 3 * 60 * 1000).toISOString();
+    const { data: recentPosts } = await supabase
+        .from('threads')
+        .select('created_at')
+        .eq('fp', fpId)
+        .gte('created_at', threeMinutesAgo);
 
-        // 3. 1日の上限チェック（例: 24時間以内に10スレッドまで）
-        const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-        const { count: todayCount } = await supabase
-            .from('threads')
-            .select('*', { count: 'exact', head: true })
-            .eq('fp', fpId)
-            .gte('created_at', oneDayAgo);
+    if (recentPosts && recentPosts.length > 0) {
+        alert("投稿間隔が短すぎます。スレッド作成は3分間に1回までです。");
+        return false;
+    }
 
-        if (todayCount !== null && todayCount >= 10) {
-            alert("1日のスレッド作成上限（10件）に達しました。明日以降に投稿してください。");
-            return;
-        }
+    // 3. 1日の上限チェック（24時間以内に10スレッドまで）
+    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    const { count: todayCount } = await supabase
+        .from('threads')
+        .select('*', { count: 'exact', head: true })
+        .eq('fp', fpId)
+        .gte('created_at', oneDayAgo);
+
+    if (todayCount !== null && todayCount >= 10) {
+        alert("1日のスレッド作成上限（10件）に達しました。明日以降に投稿してください。");
+        return false;
     }
 
     const diceMatch = body.match(/dice(\d+)d(\d+)/i);
@@ -305,7 +358,7 @@ export async function createThread(title, author, body, file, fpId) {
     }
 
     const tags = Array.from(body.matchAll(/#([^\s#]+)/g)).map(m => m[1]);
-    const imgBase64 = await compressImage(file);
+    const imgBase64 = await compressImage(file, 400, 0.6);
 
     solve_pow(fpId + title, 3);
 
@@ -323,24 +376,14 @@ export async function createThread(title, author, body, file, fpId) {
         replies: []
     };
 
-    if (supabase) {
-        await supabase.from('threads').insert([newThread]);
-    } else {
-        cachedThreads.unshift(newThread);
-        try {
-            localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(cachedThreads));
-        } catch (err) {
-            console.warn("ローカルストレージの上限に達したため、古いスレッドを削除して保存を試みます", err);
-            cachedThreads.pop();
-            try {
-                localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(cachedThreads));
-            } catch (retryErr) {
-                alert("ローカルストレージの空き容量が不足しています。");
-            }
-        }
+    const { error } = await supabase.from('threads').insert([newThread]);
+    if (error) {
+        alert("スレッドの作成に失敗しました: " + (error.message || "通信エラー"));
+        return false;
     }
 
     await fetchAndRender(fpId);
+    return true;
 }
 
 // 返信送信
@@ -355,13 +398,16 @@ window.postReply = async function(e, threadId) {
     let body = bodyInput.value.trim();
     if (!body) return;
 
+    if (!supabase) {
+        alert("サーバーに接続できません。返信を送信できませんでした。");
+        return;
+    }
+
     // BANチェック
-    if (supabase) {
-        const { data: ban } = await supabase.from('banned_users').select('reason').eq('fp', fpId).single();
-        if (ban) {
-            alert(`この端末は利用停止（BAN）されています。\n理由: ${ban.reason || '規約違反'}`);
-            return;
-        }
+    const { data: ban } = await supabase.from('banned_users').select('reason').eq('fp', fpId).maybeSingle();
+    if (ban) {
+        alert(`この端末は利用停止（BAN）されています。\n理由: ${ban.reason || '規約違反'}`);
+        return;
     }
 
     submitBtn.disabled = true;
@@ -376,15 +422,17 @@ window.postReply = async function(e, threadId) {
         body += "\n" + roll_dice(parseInt(diceMatch[1]), parseInt(diceMatch[2]), secureSeed);
     }
 
-    const t = cachedThreads.find(x => x.id === threadId);
-    if (!t) {
+    // 最新のスレッド情報をDBから取得して競合上書きを防ぐ
+    const { data: latestThread, error: fetchErr } = await supabase.from('threads').select('replies, fp').eq('id', threadId).maybeSingle();
+    if (fetchErr || !latestThread) {
+        alert("スレッド情報の取得に失敗しました。");
         submitBtn.disabled = false;
         submitBtn.textContent = '返信';
         return;
     }
 
     // 名前を入力していて、かつスレッド作成者ならスレ主フラグを立てる
-    const isOpPost = (t.fp === fpId) && (rawAuthor.length > 0) && (rawAuthor !== '名無し');
+    const isOpPost = (latestThread.fp === fpId) && (rawAuthor.length > 0) && (rawAuthor !== '名無し');
     const authorName = rawAuthor.length > 0 ? rawAuthor : '名無し';
 
     const newReply = {
@@ -398,22 +446,17 @@ window.postReply = async function(e, threadId) {
         down_count: 0
     };
 
-    const updatedReplies = [...(t.replies || []), newReply];
+    const updatedReplies = [...(latestThread.replies || []), newReply];
 
-    if (supabase) {
-        const { error } = await supabase.from('threads').update({ replies: updatedReplies }).eq('id', threadId);
-        if (error) {
-            alert("返信の送信に失敗しました。");
-            submitBtn.disabled = false;
-            submitBtn.textContent = '返信';
-            return;
-        }
-    } else {
-        t.replies = updatedReplies;
-        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(cachedThreads));
+    const { error } = await supabase.from('threads').update({ replies: updatedReplies }).eq('id', threadId);
+    if (error) {
+        alert("返信の送信に失敗しました。");
+        submitBtn.disabled = false;
+        submitBtn.textContent = '返信';
+        return;
     }
 
-    input.value = '';
+    bodyInput.value = '';
     submitBtn.disabled = false;
     submitBtn.textContent = '返信';
     await fetchAndRender(fpId);
@@ -421,26 +464,22 @@ window.postReply = async function(e, threadId) {
 
 // 投票処理
 window.vote = async function(id, type) {
+    if (!supabase) {
+        alert("サーバーに接続できません。");
+        return;
+    }
+
     const fpId = localStorage.getItem('_fp_id') || 'anon';
     const myVotes = JSON.parse(localStorage.getItem('hub_my_votes') || '{}');
     if (myVotes[id]) return;
 
-    if (supabase) {
-        const { error: voteErr } = await supabase.from('votes').insert([{ thread_id: id, fp: fpId, vote_type: type }]);
-        if (voteErr) { alert("すでに投票済みです。"); return; }
+    const { error: voteErr } = await supabase.from('votes').insert([{ thread_id: id, fp: fpId, vote_type: type }]);
+    if (voteErr) { alert("すでに投票済みです。"); return; }
 
-        const t = cachedThreads.find(x => x.id === id);
-        if (t) {
-            const updateData = type === 'up' ? { up_count: (t.up_count || 0) + 1 } : { down_count: (t.down_count || 0) + 1 };
-            await supabase.from('threads').update(updateData).eq('id', id);
-        }
-    } else {
-        const t = cachedThreads.find(x => x.id === id);
-        if (t) {
-            if (type === 'up') t.up_count = (t.up_count || 0) + 1;
-            if (type === 'down') t.down_count = (t.down_count || 0) + 1;
-            localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(cachedThreads));
-        }
+    const t = cachedThreads.find(x => x.id === id);
+    if (t) {
+        const updateData = type === 'up' ? { up_count: (t.up_count || 0) + 1 } : { down_count: (t.down_count || 0) + 1 };
+        await supabase.from('threads').update(updateData).eq('id', id);
     }
 
     myVotes[id] = type;
@@ -463,39 +502,56 @@ window.toggleThread = function(threadId) {
     renderBoardUI(fpId);
 };
 window.openBase64Image = function(base64Data) {
-    const win = window.open('');
+    const win = window.open('about:blank', '_blank');
     if (win) {
-        win.document.write(`<body style="margin:0;background:#0e0e0e;display:flex;align-items:center;justify-content:center;height:100vh;"><img src="${base64Data}" style="max-width:100%;max-height:100%;"></body>`);
+        win.document.title = 'Image Preview';
+        win.document.body.style.cssText = 'margin:0;background:#0e0e0e;display:flex;align-items:center;justify-content:center;height:100vh;';
+        const img = win.document.createElement('img');
+        img.src = base64Data;
+        img.style.cssText = 'max-width:100%;max-height:100%;object-fit:contain;';
+        win.document.body.appendChild(img);
     }
 };
 // レス単位の投票処理
 window.voteReply = async function(threadId, replyId, type) {
+    if (!supabase) {
+        alert("サーバーに接続できません。");
+        return;
+    }
+
     const myVotes = JSON.parse(localStorage.getItem('hub_my_votes') || '{}');
     if (myVotes[replyId]) return;
 
-    const t = cachedThreads.find(x => x.id === threadId);
-    if (!t || !t.replies) return;
+    // 最新の replies データをDBから取得
+    const { data: threadData, error } = await supabase.from('threads').select('replies').eq('id', threadId).maybeSingle();
+    if (error || !threadData || !threadData.replies) return;
 
-    const reply = t.replies.find(r => r.id === replyId);
+    const replies = threadData.replies;
+    const reply = replies.find(r => r.id === replyId);
     if (!reply) return;
 
     if (type === 'up') reply.up_count = (reply.up_count || 0) + 1;
     if (type === 'down') reply.down_count = (reply.down_count || 0) + 1;
 
-    if (supabase) {
-        await supabase.from('threads').update({ replies: t.replies }).eq('id', threadId);
-    } else {
-        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(cachedThreads));
+    const { error: updateErr } = await supabase.from('threads').update({ replies }).eq('id', threadId);
+    if (updateErr) {
+        alert("投票に失敗しました。");
+        return;
     }
 
     myVotes[replyId] = type;
     localStorage.setItem('hub_my_votes', JSON.stringify(myVotes));
     const fpId = localStorage.getItem('_fp_id') || 'anon';
-    renderBoardUI(fpId);
+    await fetchAndRender(fpId);
 };
 
 // 個人（FP）単位の評価投票
 window.voteUser = async function(targetFp, type) {
+    if (!supabase) {
+        alert("サーバーに接続できません。");
+        return;
+    }
+
     const myVotes = JSON.parse(localStorage.getItem('hub_my_votes') || '{}');
     const voteKey = 'user_' + targetFp;
     if (myVotes[voteKey]) {
@@ -503,12 +559,15 @@ window.voteUser = async function(targetFp, type) {
         return;
     }
 
-    if (supabase) {
-        await supabase.from('user_reputations').insert([{
-            target_fp: targetFp,
-            vote_type: type,
-            voter_fp: localStorage.getItem('_fp_id') || 'anon'
-        }]);
+    const { error } = await supabase.from('user_reputations').insert([{
+        target_fp: targetFp,
+        vote_type: type,
+        voter_fp: localStorage.getItem('_fp_id') || 'anon'
+    }]);
+
+    if (error) {
+        alert("評価の送信に失敗しました: すでに評価済みか、エラーが発生しました。");
+        return;
     }
 
     myVotes[voteKey] = type;
